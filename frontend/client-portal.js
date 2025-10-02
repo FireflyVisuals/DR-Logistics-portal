@@ -1,6 +1,5 @@
 console.log("Initializing Client Portal");
 
-
 /* ============================
    Load Tables
    ============================ */
@@ -74,4 +73,3 @@ document.getElementById("logout-btn").addEventListener("click", async () => {
    Init
    ============================ */
 document.addEventListener("DOMContentLoaded", loadTables);
-
