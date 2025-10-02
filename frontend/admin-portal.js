@@ -1,9 +1,5 @@
 console.log("Initializing Admin Portal");
 
-const supabaseUrl = "https://nfegizbnvxttxpinqlcz.supabase.co";
-const supabaseAnonKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5mZWdpemJudnh0dHhwaW5xbGN6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTkxNTU2ODQsImV4cCI6MjA3NDczMTY4NH0.3f_LruJauLb8vYNmmP3PCd5WNO5U4JLiSjLg0YCtVYA";
-const supabaseClient = supabase.createClient(supabaseUrl, supabaseAnonKey);
-
 let currentRole = "admin"; // force admin features
 
 /* ============================
@@ -291,3 +287,4 @@ document.getElementById("logout-btn").addEventListener("click", async () => {
    Init
    ============================ */
 document.addEventListener("DOMContentLoaded", loadTables);
+
