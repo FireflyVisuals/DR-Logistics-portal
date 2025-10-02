@@ -1,7 +1,7 @@
 console.log("Initializing Staff/Admin Portal");
 
-const supabaseUrl = 'https://nfegizbnvxttxpinqlcz.supabase.co';
-const supabaseAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5mZWdpemJudnh0dHhwaW5xbGN6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTkxNTU2ODQsImV4cCI6MjA3NDczMTY4NH0.3f_LruJauLb8vYNmmP3PCd5WNO5U4JLiSjLg0YCtVYA';
+const supabaseUrl = "https://nfegizbnvxttxpinqlcz.supabase.co";
+const supabaseAnonKey = "YOUR_SUPABASE_KEY";
 const supabaseClient = supabase.createClient(supabaseUrl, supabaseAnonKey);
 
 let currentRole = null;
@@ -32,11 +32,16 @@ async function loadTables() {
   }
 
   const user = session.user;
-  const { data: roleRow } = await supabaseClient
+  const { data: roleRow, error: roleError } = await supabaseClient
     .from("users")
     .select("role")
     .eq("auth_id", user.id)
     .maybeSingle();
+
+  if (roleError) {
+    console.error("Role lookup failed", roleError.message);
+    return;
+  }
 
   currentRole = roleRow?.role || "client";
   console.log("Logged in as", currentRole);
@@ -58,7 +63,7 @@ async function loadTables() {
    ============================ */
 async function loadShipments() {
   const { data, error } = await supabaseClient.from("shipments").select("*").order("eta_date");
-  if (error) return console.error(error);
+  if (error) return console.error("Load shipments failed:", error.message);
 
   const tbody = document.querySelector("#shipments-table tbody");
   tbody.innerHTML = data.map((r, i) => `
@@ -83,7 +88,7 @@ async function loadShipments() {
    ============================ */
 async function loadClients() {
   const { data, error } = await supabaseClient.from("clients").select("*");
-  if (error) return console.error(error);
+  if (error) return console.error("Load clients failed:", error.message);
 
   const tbody = document.querySelector("#clients-table tbody");
   tbody.innerHTML = data.map(r => `
@@ -103,7 +108,7 @@ async function loadUsers() {
     .from("users")
     .select(`id,email,name,role,clients ( name )`);
 
-  if (error) return console.error("Load users failed", error);
+  if (error) return console.error("Load users failed:", error.message);
 
   const tbody = document.querySelector("#users-table tbody");
   tbody.innerHTML = data.map(r => `
@@ -162,21 +167,129 @@ function booleanSelect(column, value) {
 }
 
 /* ============================
+   Sorting: Shipments
+   ============================ */
+let shipmentSort = { index: null, dir: "none" };
+const shipmentColumns = [
+  { key: "shipment_ref", type: "text" },
+  { key: "container_no", type: "text" },
+  { key: "bl_number", type: "text" },
+  { key: "eta_date", type: "date" },
+  { key: "vessel_name", type: "text" },
+  { key: "doc_invoice", type: "bool" },
+  { key: "doc_packing_list", type: "bool" },
+  { key: "doc_bl", type: "bool" },
+  { key: "notes", type: "text" }
+];
+
+function initShipmentSorting() {
+  const thead = document.querySelector("#shipments-table thead");
+  if (!thead) return;
+  const ths = Array.from(thead.querySelectorAll("th"));
+
+  ths.forEach((th, i) => {
+    th.style.cursor = "pointer";
+    if (!th.querySelector(".sort-indicator")) {
+      const span = document.createElement("span");
+      span.className = "sort-indicator";
+      span.style.marginLeft = "6px";
+      span.textContent = "↕";
+      th.appendChild(span);
+    }
+    th.dataset.sort = "none";
+    th.onclick = () => onShipmentHeaderClick(i, th);
+  });
+}
+
+function onShipmentHeaderClick(colIndex, thEl) {
+  if (!shipmentColumns[colIndex]) return;
+
+  let state = thEl.dataset.sort || "none";
+  const newState = state === "none" ? "asc" : state === "asc" ? "desc" : "none";
+
+  document.querySelectorAll("#shipments-table thead th").forEach(th => {
+    th.dataset.sort = "none";
+    const ind = th.querySelector(".sort-indicator");
+    if (ind) ind.textContent = "↕";
+  });
+
+  thEl.dataset.sort = newState;
+  const ind = thEl.querySelector(".sort-indicator");
+  if (ind) ind.textContent = newState === "asc" ? "↑" : newState === "desc" ? "↓" : "↕";
+
+  shipmentSort.index = (newState === "none") ? null : colIndex;
+  shipmentSort.dir = newState;
+
+  if (newState === "none") {
+    restoreShipmentOriginalOrder();
+  } else {
+    sortShipmentsBy(colIndex, shipmentColumns[colIndex].type, newState);
+  }
+}
+
+function restoreShipmentOriginalOrder() {
+  const tbody = document.querySelector("#shipments-table tbody");
+  const rows = Array.from(tbody.querySelectorAll("tr"));
+  rows.sort((a, b) => {
+    const ai = parseInt(a.dataset.originalIndex || "0", 10);
+    const bi = parseInt(b.dataset.originalIndex || "0", 10);
+    return ai - bi;
+  });
+  rows.forEach(r => tbody.appendChild(r));
+}
+
+function sortShipmentsBy(colIndex, type, dir) {
+  const tbody = document.querySelector("#shipments-table tbody");
+  const rows = Array.from(tbody.querySelectorAll("tr"));
+
+  const getVal = (row) => {
+    const cell = row.cells[colIndex];
+    if (!cell) return "";
+    if (type === "bool") {
+      const sel = cell.querySelector("select");
+      return sel ? (sel.value === "true") : false;
+    }
+    const txt = cell.innerText.trim();
+    if (type === "date") {
+      const t = Date.parse(txt);
+      return isNaN(t) ? -Infinity : t;
+    }
+    return txt.toLowerCase();
+  };
+
+  rows.sort((a, b) => {
+    const av = getVal(a);
+    const bv = getVal(b);
+
+    let cmp = 0;
+    if (type === "date") {
+      cmp = (av === bv) ? 0 : (av < bv ? -1 : 1);
+    } else if (type === "bool") {
+      cmp = (av === bv) ? 0 : (av ? 1 : -1);
+    } else {
+      cmp = av.localeCompare(bv, undefined, { numeric: true, sensitivity: "base" });
+    }
+
+    return dir === "asc" ? cmp : -cmp;
+  });
+
+  rows.forEach(r => tbody.appendChild(r));
+}
+
+/* ============================
    Expanded View Init
    ============================ */
 function initExpandedView(clone) {
-  // Re-bind inline edits and dropdowns inside clone
   makeEditable("shipments-table", "shipments");
   makeDropdownEditable("shipments-table", "shipments");
   makeEditable("clients-table", "clients");
   makeEditable("users-table", "users", ["email", "name", "role"]);
 
-  // Rebind reset-link buttons in expanded view
   clone.querySelectorAll(".reset-link-btn").forEach(btn => {
     btn.addEventListener("click", async (e) => {
       const row = e.target.closest("tr");
       const email = row.dataset.email;
-      alert("Reset link for: " + email); // (replace with real reset-link flow)
+      alert("Reset link for: " + email);
     });
   });
 
