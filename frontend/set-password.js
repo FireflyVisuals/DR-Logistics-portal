@@ -1,6 +1,6 @@
-console.log("Initializing Set Password Page");
-
 document.addEventListener("DOMContentLoaded", () => {
+  console.log("Initializing Set Password Page");
+
   const statusDiv = document.getElementById("status-message");
   const form = document.getElementById("set-password-form");
 
@@ -51,7 +51,6 @@ document.addEventListener("DOMContentLoaded", () => {
           window.location.href = "/portal/log-in";
         });
       }
-
     } catch (err) {
       console.error("❌ Request failed:", err);
       statusDiv.innerText = "❌ " + err.message;
