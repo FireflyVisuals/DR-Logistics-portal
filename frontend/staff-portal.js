@@ -1,10 +1,4 @@
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script>
-console.log("Initializing Staff/Admin Portal");
-
-const supabaseUrl = 'https://nfegizbnvxttxpinqlcz.supabase.co';
-const supabaseAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5mZWdpemJudnh0dHhwaW5xbGN6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTkxNTU2ODQsImV4cCI6MjA3NDczMTY4NH0.3f_LruJauLb8vYNmmP3PCd5WNO5U4JLiSjLg0YCtVYA';
-const supabaseClient = supabase.createClient(supabaseUrl, supabaseAnonKey);
+console.log("Initializing Staff Portal");
 
 let currentRole = null;
 
@@ -34,11 +28,16 @@ async function loadTables() {
   }
 
   const user = session.user;
-  const { data: roleRow } = await supabaseClient
+  const { data: roleRow, error: roleError } = await supabaseClient
     .from("users")
     .select("role")
     .eq("auth_id", user.id)
     .maybeSingle();
+
+  if (roleError) {
+    console.error("Role lookup failed", roleError.message);
+    return;
+  }
 
   currentRole = roleRow?.role || "client";
   console.log("Logged in as", currentRole);
@@ -60,7 +59,7 @@ async function loadTables() {
    ============================ */
 async function loadShipments() {
   const { data, error } = await supabaseClient.from("shipments").select("*").order("eta_date");
-  if (error) return console.error(error);
+  if (error) return console.error("Load shipments failed:", error.message);
 
   const tbody = document.querySelector("#shipments-table tbody");
   tbody.innerHTML = data.map((r, i) => `
@@ -85,7 +84,7 @@ async function loadShipments() {
    ============================ */
 async function loadClients() {
   const { data, error } = await supabaseClient.from("clients").select("*");
-  if (error) return console.error(error);
+  if (error) return console.error("Load clients failed:", error.message);
 
   const tbody = document.querySelector("#clients-table tbody");
   tbody.innerHTML = data.map(r => `
@@ -105,7 +104,7 @@ async function loadUsers() {
     .from("users")
     .select(`id,email,name,role,clients ( name )`);
 
-  if (error) return console.error("Load users failed", error);
+  if (error) return console.error("Load users failed:", error.message);
 
   const tbody = document.querySelector("#users-table tbody");
   tbody.innerHTML = data.map(r => `
@@ -118,71 +117,6 @@ async function loadUsers() {
   </tr>`).join("");
 
   makeEditable("users-table", "users", ["email", "name", "role"]);
-}
-
-/* ============================
-   Editable Helpers
-   ============================ */
-function makeEditable(tableId, tableName, allowedColumns = null) {
-  document.querySelectorAll(`#${tableId} td[contenteditable]`).forEach(td => {
-    td.addEventListener("blur", async () => {
-      const row = td.closest("tr");
-      const id = row.dataset.id;
-      const column = td.dataset.column;
-      const value = td.innerText.trim();
-
-      if (allowedColumns && !allowedColumns.includes(column)) return;
-
-      const { error } = await supabaseClient.from(tableName).update({ [column]: value }).eq("id", id);
-      td.style.backgroundColor = error ? "#ffcccc" : "#ccffcc";
-      if (!error) setTimeout(() => (td.style.backgroundColor = ""), 800);
-    });
-  });
-}
-
-function makeDropdownEditable(tableId, tableName) {
-  document.querySelectorAll(`#${tableId} select[data-column]`).forEach(select => {
-    select.addEventListener("change", async () => {
-      const row = select.closest("tr");
-      const id = row.dataset.id;
-      const column = select.dataset.column;
-      const value = select.value === "true";
-
-      const { error } = await supabaseClient.from(tableName).update({ [column]: value }).eq("id", id);
-      select.style.backgroundColor = error ? "#ffcccc" : "#ccffcc";
-      if (!error) setTimeout(() => (select.style.backgroundColor = ""), 800);
-    });
-  });
-}
-
-function booleanSelect(column, value) {
-  return `
-    <select data-column="${column}">
-      <option value="true" ${value ? "selected" : ""}>✔</option>
-      <option value="false" ${!value ? "selected" : ""}>✘</option>
-    </select>`;
-}
-
-/* ============================
-   Expanded View Init
-   ============================ */
-function initExpandedView(clone) {
-  // Re-bind inline edits and dropdowns inside clone
-  makeEditable("shipments-table", "shipments");
-  makeDropdownEditable("shipments-table", "shipments");
-  makeEditable("clients-table", "clients");
-  makeEditable("users-table", "users", ["email", "name", "role"]);
-
-  // Rebind reset-link buttons in expanded view
-  clone.querySelectorAll(".reset-link-btn").forEach(btn => {
-    btn.addEventListener("click", async (e) => {
-      const row = e.target.closest("tr");
-      const email = row.dataset.email;
-      alert("Reset link for: " + email); // (replace with real reset-link flow)
-    });
-  });
-
-  if (currentRole !== "client") initShipmentSorting();
 }
 
 /* ============================
@@ -218,6 +152,23 @@ document.addEventListener("DOMContentLoaded", () => {
   });
 });
 
+function initExpandedView(clone) {
+  makeEditable("shipments-table", "shipments");
+  makeDropdownEditable("shipments-table", "shipments");
+  makeEditable("clients-table", "clients");
+  makeEditable("users-table", "users", ["email", "name", "role"]);
+
+  clone.querySelectorAll(".reset-link-btn").forEach(btn => {
+    btn.addEventListener("click", async (e) => {
+      const row = e.target.closest("tr");
+      const email = row.dataset.email;
+      alert("Reset link for: " + email); // TODO: replace with Supabase function call
+    });
+  });
+
+  if (currentRole !== "client") initShipmentSorting();
+}
+
 /* ============================
    Logout
    ============================ */
@@ -230,4 +181,3 @@ document.getElementById("logout-btn").addEventListener("click", async () => {
    Init
    ============================ */
 document.addEventListener("DOMContentLoaded", loadTables);
-</script>
