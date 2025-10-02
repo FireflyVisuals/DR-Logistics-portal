@@ -1,5 +1,3 @@
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script>
 console.log("Initializing Staff/Admin Portal");
 
 const supabaseUrl = 'https://nfegizbnvxttxpinqlcz.supabase.co';
@@ -230,4 +228,3 @@ document.getElementById("logout-btn").addEventListener("click", async () => {
    Init
    ============================ */
 document.addEventListener("DOMContentLoaded", loadTables);
-</script>
