@@ -1,0 +1,69 @@
+.portal-container {
+  background: #fff;
+  border-radius: 12px;
+  padding: 1rem;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+  overflow: hidden;
+}
+
+.portal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.portal-button {
+  padding: 6px 12px;
+  margin: 2px;
+  border: none;
+  border-radius: 6px;
+  background: #034e7b;
+  color: white;
+  cursor: pointer;
+}
+
+.portal-button:hover {
+  background: #0466a3;
+}
+
+.portal-table-wrapper {
+  overflow-x: auto;
+  margin-top: 1rem;
+}
+
+.portal-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.portal-table th, .portal-table td {
+  border: 1px solid #ddd;
+  padding: 6px;
+  text-align: left;
+}
+
+.portal-overlay {
+  display: none;
+  position: fixed;
+  top: 0; left: 0;
+  width: 100%; height: 100%;
+  background: rgba(0,0,0,0.6);
+  justify-content: center;
+  align-items: center;
+  z-index: 2000;
+}
+
+.portal-expanded {
+  background: #fff;
+  padding: 2rem;
+  border-radius: 12px;
+  max-width: calc(100% - 64px);
+  max-height: calc(100% - 64px);
+  overflow: auto;
+}
+
+.close-btn {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+}
