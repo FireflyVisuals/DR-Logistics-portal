@@ -113,12 +113,18 @@
 
 .portal-expanded {
   background: #fff;
+  color: #333;
   padding: 2rem;
   border-radius: 12px;
   max-width: calc(100% - 64px);
   max-height: calc(100% - 64px);
   overflow: auto;
   position: relative;
+}
+
+.portal-expanded table th,
+.portal-expanded table td {
+  color: #333;
 }
 
 .close-btn {
