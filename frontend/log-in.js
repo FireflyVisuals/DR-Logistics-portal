@@ -2,11 +2,16 @@
 function initLogin() {
   console.log("Initializing Login Page");
 
-  // Redirect logged-in users if they already have a session
-  supabaseClient.auth.getSession().then(({ data: { session } }) => {
+  // Check for active session
+  supabaseClient.auth.getSession().then(async ({ data: { session } }) => {
     if (session) {
-      console.log("Already logged in, redirecting by role");
-      redirectByRole(session.user);
+      console.log("Session found, checking role…");
+      const success = await tryRedirectByRole(session.user);
+      if (!success) {
+        console.warn("Invalid session or role lookup failed, signing out");
+        await supabaseClient.auth.signOut();
+        document.getElementById("login-message").innerText = "⚠️ Please log in again.";
+      }
     }
   });
 
@@ -28,32 +33,36 @@ function initLogin() {
       }
 
       console.log("Login success, redirecting by role");
-      redirectByRole(data.user);
+      await tryRedirectByRole(data.user);
     }
   });
 
   // Role-based redirect
-  async function redirectByRole(user) {
-    console.log("Determining role for user", user.email);
+  async function tryRedirectByRole(user) {
+    try {
+      const { data: userRow, error } = await supabaseClient
+        .from("users")
+        .select("role")
+        .eq("auth_id", user.id)
+        .maybeSingle();
 
-    const { data: userRow, error } = await supabaseClient
-      .from("users")
-      .select("role")
-      .eq("auth_id", user.id)
-      .single();
+      if (error || !userRow) {
+        console.error("Role lookup error", error);
+        return false;
+      }
 
-    if (error || !userRow) {
-      console.error("Role lookup error", error);
-      document.getElementById("login-message").innerText = "Unable to determine role.";
-      return;
-    }
-
-    if (userRow.role === "client") {
-      window.location.href = "/portal/klant";
-    } else if (["staff", "admin"].includes(userRow.role)) {
-      window.location.href = "/portal/staff";
-    } else {
-      document.getElementById("login-message").innerText = "Unknown role.";
+      if (userRow.role === "client") {
+        window.location.href = "/portal/klant";
+      } else if (["staff", "admin"].includes(userRow.role)) {
+        window.location.href = "/portal/staff";
+      } else {
+        console.warn("Unknown role:", userRow.role);
+        return false;
+      }
+      return true;
+    } catch (err) {
+      console.error("Redirect by role failed", err);
+      return false;
     }
   }
 }
