@@ -1,17 +1,29 @@
+/* Container */
 .portal-container {
   background: #fff;
   border-radius: 12px;
   padding: 1rem;
   box-shadow: 0 2px 8px rgba(0,0,0,0.1);
   overflow: hidden;
+  font-family: system-ui, sans-serif;
+  color: #333;
 }
 
+/* Header */
 .portal-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
+  margin-bottom: 1rem;
 }
 
+.portal-header h2 {
+  margin: 0;
+  font-size: 1.4rem;
+  color: #034e7b;
+}
+
+/* Buttons */
 .portal-button {
   padding: 6px 12px;
   margin: 2px;
@@ -19,6 +31,7 @@
   border-radius: 6px;
   background: #034e7b;
   color: white;
+  font-size: 0.9rem;
   cursor: pointer;
 }
 
@@ -26,6 +39,34 @@
   background: #0466a3;
 }
 
+/* Tabs */
+.tab-bar {
+  display: flex;
+  margin-bottom: 1rem;
+  border-bottom: 2px solid #eee;
+}
+
+.tab-btn {
+  flex: none;
+  padding: 8px 14px;
+  margin-right: 4px;
+  border: none;
+  border-radius: 6px 6px 0 0;
+  background: #f1f1f1;
+  cursor: pointer;
+  font-size: 0.9rem;
+}
+
+.tab-btn.active {
+  background: #034e7b;
+  color: white;
+}
+
+.tab-panel {
+  display: none;
+}
+
+/* Table */
 .portal-table-wrapper {
   overflow-x: auto;
   margin-top: 1rem;
@@ -34,14 +75,31 @@
 .portal-table {
   width: 100%;
   border-collapse: collapse;
+  font-size: 0.9rem;
 }
 
-.portal-table th, .portal-table td {
-  border: 1px solid #ddd;
-  padding: 6px;
+.portal-table th {
+  background: #f4f4f4;
   text-align: left;
+  font-weight: 600;
+  color: #034e7b;
 }
 
+.portal-table th,
+.portal-table td {
+  border: 1px solid #ddd;
+  padding: 6px 10px;
+}
+
+.portal-table tr:nth-child(even) {
+  background: #fafafa;
+}
+
+.portal-table tr:hover {
+  background: #f1f8ff;
+}
+
+/* Overlay + expanded view */
 .portal-overlay {
   display: none;
   position: fixed;
@@ -60,10 +118,48 @@
   max-width: calc(100% - 64px);
   max-height: calc(100% - 64px);
   overflow: auto;
+  position: relative;
 }
 
 .close-btn {
   position: absolute;
   top: 16px;
   right: 16px;
+  font-size: 1rem;
+  background: #ccc;
+  color: #333;
+}
+
+.close-btn:hover {
+  background: #aaa;
+  color: white;
+}
+
+/* Forms (Create User etc.) */
+.portal-form {
+  margin-top: 1rem;
+}
+
+.portal-form label {
+  display: block;
+  margin-bottom: 0.25rem;
+  font-weight: 500;
+  color: #034e7b;
+}
+
+.portal-form input,
+.portal-form select {
+  width: 100%;
+  padding: 8px;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+  margin-bottom: 0.75rem;
+  font-size: 0.9rem;
+}
+
+.portal-form input:focus,
+.portal-form select:focus {
+  outline: none;
+  border-color: #034e7b;
+  box-shadow: 0 0 0 2px rgba(3,78,123,0.2);
 }
