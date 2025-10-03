@@ -1,83 +1,59 @@
-document.addEventListener("DOMContentLoaded", () => {
-  console.log("Initializing Admin Portal");
+// log-in.js
+function initLogin() {
+  console.log("Initializing Login Page");
 
-  async function loadTables() {
-    const { data: { session } } = await supabaseClient.auth.getSession();
-    if (!session) {
-      console.log("No active session, redirecting to login");
-      setTimeout(() => { window.location.href = "/portal/log-in"; }, 500);
+  // Redirect logged-in users if they already have a session
+  supabaseClient.auth.getSession().then(({ data: { session } }) => {
+    if (session) {
+      console.log("Already logged in, redirecting by role");
+      redirectByRole(session.user);
+    }
+  });
+
+  // Login button click
+  document.addEventListener("click", async e => {
+    if (e.target.id === "login-btn") {
+      const email = document.getElementById("email").value.trim().toLowerCase();
+      const password = document.getElementById("password").value;
+      const messageDiv = document.getElementById("login-message");
+      messageDiv.innerText = "";
+
+      console.log("Login attempt", email);
+
+      const { data, error } = await supabaseClient.auth.signInWithPassword({ email, password });
+      if (error) {
+        console.error("Login error", error);
+        messageDiv.innerText = error.message;
+        return;
+      }
+
+      console.log("Login success, redirecting by role");
+      redirectByRole(data.user);
+    }
+  });
+
+  // Role-based redirect
+  async function redirectByRole(user) {
+    console.log("Determining role for user", user.email);
+
+    const { data: userRow, error } = await supabaseClient
+      .from("users")
+      .select("role")
+      .eq("auth_id", user.id)
+      .single();
+
+    if (error || !userRow) {
+      console.error("Role lookup error", error);
+      document.getElementById("login-message").innerText = "Unable to determine role.";
       return;
     }
 
-    await loadShipments();
-    await loadClients();
-    await loadUsers();
-    initShipmentSorting();
-  }
-
-  // Tab switching
-  document.addEventListener("click", e => {
-    if (e.target.classList.contains("tab-btn")) {
-      document.querySelectorAll(".tab-btn").forEach(btn => btn.classList.remove("active"));
-      e.target.classList.add("active");
-
-      document.querySelectorAll(".tab-panel").forEach(panel => panel.style.display = "none");
-      const selected = e.target.dataset.tab;
-      const panel = document.getElementById(`${selected}-panel`);
-      if (panel) panel.style.display = "block";
+    if (userRow.role === "client") {
+      window.location.href = "/portal/klant";
+    } else if (["staff", "admin"].includes(userRow.role)) {
+      window.location.href = "/portal/staff";
+    } else {
+      document.getElementById("login-message").innerText = "Unknown role.";
     }
-  });
-
-  // Expand / Collapse
-  const expandBtn = document.getElementById("fullscreen-btn");
-  const overlay = document.getElementById("portal-overlay");
-  const expanded = document.getElementById("portal-expanded");
-  const closeBtn = document.getElementById("close-fullscreen");
-  const portalContent = document.querySelector("#admin-portal-container #tab-content");
-
-  if (expandBtn && overlay && expanded && closeBtn && portalContent) {
-    expandBtn.addEventListener("click", () => {
-      const clone = portalContent.cloneNode(true);
-      clone.id = "tab-content-clone";
-
-      expanded.querySelectorAll("#tab-content-clone").forEach(n => n.remove());
-      expanded.appendChild(clone);
-
-      overlay.style.display = "flex";
-      expandBtn.style.display = "none";
-      document.body.style.overflow = "hidden";
-      expanded.scrollTop = 0;
-
-      initExpandedView(clone);
-    });
-
-    closeBtn.addEventListener("click", () => {
-      overlay.style.display = "none";
-      expanded.querySelectorAll("#tab-content-clone").forEach(n => n.remove());
-      expandBtn.style.display = "inline-block";
-      document.body.style.overflow = "";
-    });
   }
-
-  // Delegated actions (reset + create user)
-  document.addEventListener("click", async e => {
-    if (e.target.id === "create-user-btn") {
-      await handleCreateUser();
-    }
-    if (e.target.classList.contains("reset-link-btn")) {
-      const row = e.target.closest("tr");
-      if (row) await handleResetLink(row.dataset.email);
-    }
-  });
-
-  // Logout
-  const logoutBtn = document.getElementById("logout-btn");
-  if (logoutBtn) {
-    logoutBtn.addEventListener("click", async () => {
-      await supabaseClient.auth.signOut();
-      window.location.href = "/portal/log-in";
-    });
-  }
-
-  loadTables();
-});
+}
