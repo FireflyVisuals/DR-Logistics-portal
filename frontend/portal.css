@@ -1,5 +1,6 @@
 /* Container */
 .portal-container {
+  position: relative;
   background: #fff;
   border-radius: 12px;
   padding: 1rem;
