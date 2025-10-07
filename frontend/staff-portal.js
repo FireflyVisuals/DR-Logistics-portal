@@ -2,6 +2,8 @@
 function initStaffPortal() {
   console.log("Initializing Staff Portal");
 
+  let currentRole = null;
+
   /* ============================
      Load Tables
      ============================ */
@@ -13,9 +15,61 @@ function initStaffPortal() {
       return;
     }
 
+    const user = session.user;
+    const { data: roleRow } = await supabaseClient
+      .from("users")
+      .select("role")
+      .eq("auth_id", user.id)
+      .maybeSingle();
+
+    currentRole = roleRow?.role || "client";
+    console.log("Logged in as", currentRole);
+
+    // Hide admin-only UI
+    if (currentRole !== "admin") {
+      const usersTab = document.getElementById("users-tab");
+      if (usersTab) usersTab.style.display = "none";
+      const createForm = document.getElementById("create-user-form");
+      if (createForm) createForm.style.display = "none";
+    }
+
+    // 🔧 DEV ROLE SWITCHER (localhost / webflow staging only)
+    if (window.location.hostname.includes("webflow.io") || window.location.hostname === "localhost") {
+      if (!document.getElementById("dev-role-switcher")) {
+        const switcher = document.createElement("select");
+        switcher.id = "dev-role-switcher";
+        switcher.style.position = "fixed";
+        switcher.style.bottom = "20px";
+        switcher.style.right = "20px";
+        switcher.style.zIndex = "3000";
+        switcher.style.padding = "6px";
+        switcher.style.borderRadius = "6px";
+        switcher.style.border = "1px solid #ccc";
+        switcher.style.background = "#fff";
+
+        ["admin", "staff", "client"].forEach(r => {
+          const opt = document.createElement("option");
+          opt.value = r;
+          opt.textContent = "Switch to " + r;
+          if (r === currentRole) opt.selected = true;
+          switcher.appendChild(opt);
+        });
+
+        switcher.addEventListener("change", e => {
+          currentRole = e.target.value;
+          console.warn("🔄 Role manually switched to", currentRole);
+          loadTables(); // reload UI with new role
+        });
+
+        document.body.appendChild(switcher);
+      }
+    }
+
+    // Load data
     await loadShipments();
     await loadClients();
-    initShipmentSorting();
+    if (currentRole === "admin") await loadUsers();
+    if (currentRole !== "client") initShipmentSorting();
   }
 
   /* ============================
@@ -26,6 +80,7 @@ function initStaffPortal() {
     if (error) return console.error("Load shipments failed:", error.message);
 
     const tbody = document.querySelector("#shipments-table tbody");
+    if (!tbody) return;
     tbody.innerHTML = data.map((r, i) => `
       <tr data-id="${r.id}" data-original-index="${i}">
         <td contenteditable data-column="shipment_ref">${r.shipment_ref||""}</td>
@@ -51,6 +106,7 @@ function initStaffPortal() {
     if (error) return console.error("Load clients failed:", error.message);
 
     const tbody = document.querySelector("#clients-table tbody");
+    if (!tbody) return;
     tbody.innerHTML = data.map(r => `
       <tr data-id="${r.id}">
         <td contenteditable data-column="name">${r.name||""}</td>
@@ -58,6 +114,30 @@ function initStaffPortal() {
       </tr>`).join("");
 
     makeEditable("clients-table", "clients");
+  }
+
+  /* ============================
+     Users
+     ============================ */
+  async function loadUsers() {
+    const { data, error } = await supabaseClient
+      .from("users")
+      .select(`id,email,name,role,clients ( name )`);
+
+    if (error) return console.error("Load users failed", error);
+
+    const tbody = document.querySelector("#users-table tbody");
+    if (!tbody) return;
+    tbody.innerHTML = data.map(r => `
+    <tr data-id="${r.id}" data-email="${r.email}">
+      <td contenteditable data-column="email">${r.email || ""}</td>
+      <td contenteditable data-column="name">${r.name || ""}</td>
+      <td contenteditable data-column="role">${r.role || ""}</td>
+      <td>${r.clients?.name || ""}</td>
+      <td><button class="portal-button reset-link-btn">🔑 Reset Password</button></td>
+    </tr>`).join("");
+
+    makeEditable("users-table", "users", ["email", "name", "role"]);
   }
 
   /* ============================
@@ -76,7 +156,7 @@ function initStaffPortal() {
   });
 
   /* ============================
-     Expand / Collapse
+     Expand / Collapse Modal
      ============================ */
   const expandBtn = document.getElementById("fullscreen-btn");
   const overlay = document.getElementById("portal-overlay");
@@ -88,7 +168,6 @@ function initStaffPortal() {
     expandBtn.addEventListener("click", () => {
       const clone = portalContent.cloneNode(true);
       clone.id = "tab-content-clone";
-
       expanded.querySelectorAll("#tab-content-clone").forEach(n => n.remove());
       expanded.appendChild(clone);
 
