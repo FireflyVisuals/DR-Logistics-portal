@@ -22,7 +22,10 @@ function initStaffPortal() {
       .eq("auth_id", user.id)
       .maybeSingle();
 
+    // Preserve manually switched role if set
+    if (!currentRole || currentRole === "client") {
     currentRole = roleRow?.role || "client";
+    }
     console.log("Logged in as", currentRole);
 
     // Hide admin-only UI
@@ -38,7 +41,7 @@ function initStaffPortal() {
       if (!document.getElementById("dev-role-switcher")) {
         const switcher = document.createElement("select");
         switcher.id = "dev-role-switcher";
-        switcher.style.position = "fixed";
+        switcher.style.position = "absolute";
         switcher.style.bottom = "20px";
         switcher.style.right = "20px";
         switcher.style.zIndex = "3000";
@@ -61,7 +64,9 @@ function initStaffPortal() {
           loadTables(); // reload UI with new role
         });
 
-        document.body.appendChild(switcher);
+        const container = document.getElementById("staff-portal-container") || document.body;
+container.appendChild(switcher);
+;
       }
     }
 
